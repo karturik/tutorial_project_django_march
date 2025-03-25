@@ -1,0 +1,1 @@
+This is Django tutorial project for IT-Academy
