@@ -3,3 +3,4 @@
 **/__pycache__/
 **/*.ipynb
 *.sqlite3
+db.sqlite3
