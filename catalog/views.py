@@ -16,6 +16,9 @@ def catalog_homepage_view(request):
 
     num_genres = Genre.objects.all().count()
 
+    num_visits = request.session.get('num_visits', 0)
+    request.session['num_visits'] = num_visits+1
+
     # Отрисовка HTML-шаблона index.html с данными внутри
     # переменной контекста context
     return render(
@@ -26,7 +29,8 @@ def catalog_homepage_view(request):
             'num_instances': num_instances,
             'num_instances_available': num_instances_available,
             'num_authors': num_authors,
-            'num_genres': num_genres
+            'num_genres': num_genres,
+            'num_visits': num_visits
             },
     )
 
@@ -48,8 +52,36 @@ class BookListView(generic.ListView):
         # Добавляем новую переменную к контексту и инициализируем её некоторым значением
         context['some_data'] = 'This is just some data'
         return context
-    
+
 
 class BookDetailView(generic.DetailView):
     model = Book
     template_name = 'books/book_page.html'
+    
+    def get(self, request, *args, **kwargs):
+        # Получаем книгу
+        book = self.get_object()
+        
+        # Получаем или инициализируем счетчик посещений книг в сессии
+        if not request.session.get('visited_books'):
+            request.session['visited_books'] = {}
+        
+        # Ключ для записи посещений - id книги в виде строки
+        book_id = str(book.id)
+        
+        # Увеличиваем счетчик для данной книги
+        if book_id in request.session['visited_books']:
+            request.session['visited_books'][book_id] += 1
+        else:
+            request.session['visited_books'][book_id] = 1
+        
+        # Сохраняем изменения в сессии
+        request.session.modified = True
+        
+        # Передаем информацию о посещениях в контекст
+        self.extra_context = {
+            'num_visits': request.session['visited_books'].get(book_id, 0)
+        }
+        
+        # Продолжаем стандартную обработку запроса
+        return super().get(request, *args, **kwargs)
