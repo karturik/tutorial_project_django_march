@@ -14,7 +14,7 @@
           <a class="nav-link" href="{% url 'books' %}">All books</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="#">All authors</a>
+          <a class="nav-link" href="{% url 'authors' %}">All authors</a>
         </li>
         {% if user.is_authenticated %}
           <li class="nav-item">
