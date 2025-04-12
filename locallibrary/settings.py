@@ -43,8 +43,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # Our apps
-    'catalog.apps.CatalogConfig'
-
+    'catalog.apps.CatalogConfig',
+    'users_and_accounts.apps.UsersAndAccountsConfig'
     # 3-Party apps
 ]
 
@@ -64,6 +64,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
+            os.path.join(BASE_DIR, "users_and_accounts", "templates"),
             os.path.join(BASE_DIR, "locallibrary", "templates")
         ],
         'APP_DIRS': True,
@@ -132,3 +133,7 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGIN_REDIRECT_URL = '/catalog/'
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

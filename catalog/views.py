@@ -1,8 +1,11 @@
 from django.shortcuts import render
 from .models import Book, Author, BookInstance, Genre    
 from django.views import generic
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+    
 
-
+@login_required
 def catalog_homepage_view(request):
     """
     Функция отображения для домашней страницы сайта.
@@ -54,7 +57,7 @@ class BookListView(generic.ListView):
         return context
 
 
-class BookDetailView(generic.DetailView):
+class BookDetailView(LoginRequiredMixin, generic.DetailView):
     model = Book
     template_name = 'books/book_page.html'
     
@@ -85,3 +88,15 @@ class BookDetailView(generic.DetailView):
         
         # Продолжаем стандартную обработку запроса
         return super().get(request, *args, **kwargs)
+
+    
+class LoanedBooksByUserListView(LoginRequiredMixin, generic.ListView):
+    """
+    Generic class-based view listing books on loan to current user.
+    """
+    model = BookInstance
+    template_name ='books/bookinstance_list_borrowed_user.html'
+    paginate_by = 10
+
+    def get_queryset(self):
+        return BookInstance.objects.filter(borrower=self.request.user).filter(status__exact='o').order_by('due_back')
