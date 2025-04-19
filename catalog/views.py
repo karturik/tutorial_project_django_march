@@ -1,8 +1,10 @@
 from django.shortcuts import render
+from django.contrib import messages
 from .models import Book, Author, BookInstance, Genre    
 from django.views import generic
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.messages.views import SuccessMessageMixin
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponseRedirect
 from django.urls import reverse, reverse_lazy
@@ -150,12 +152,18 @@ class AuthorDetailView(LoginRequiredMixin, generic.DetailView):
     template_name = 'authors/author_page.html'
 
 
-class AuthorCreate(CreateView):
+class AuthorCreate(CreateView, SuccessMessageMixin):
     model = Author
     fields = '__all__'
     # exclude = ['date_of_birth', 'date_of_death']
     initial = {'date_of_birth': '12/10/1900',}
     template_name = 'authors/author_form.html'
+    success_message = "Автор успешно создан"
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, self.success_message)
+        return response
 
 class AuthorUpdate(UpdateView):
     model = Author
