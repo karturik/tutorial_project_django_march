@@ -174,3 +174,16 @@ class AuthorDelete(DeleteView):
     model = Author
     success_url = reverse_lazy('authors')
     template_name = 'authors/author_confirm_delete.html'
+
+
+def searching(request):
+    if request.method == "POST":
+        print(request)
+        searched = request.POST.get('searched').title()
+        books_results = Book.objects.filter(title__icontains=searched)
+        authors_results = Author.objects.filter(first_name__icontains=searched)
+        return render(request, "search_page.html", {'searched':searched, 
+                                                            'books_results':books_results,
+                                                            'authors_results':authors_results})
+    else:
+        return render(request, "search_page.html")
