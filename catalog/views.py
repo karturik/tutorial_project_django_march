@@ -3,6 +3,8 @@ from django.contrib import messages
 from .models import Book, Author, BookInstance, Genre    
 from django.views import generic
 from django.contrib.auth.decorators import login_required, permission_required
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseForbidden
+from django.views.decorators.http import require_POST
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.shortcuts import get_object_or_404
@@ -174,3 +176,48 @@ class AuthorDelete(DeleteView):
     model = Author
     success_url = reverse_lazy('authors')
     template_name = 'authors/author_confirm_delete.html'
+
+
+@login_required # Только авторизованные пользователи могут лайкать
+@require_POST # Принимаем только POST-запросы для изменения данных
+def toggle_like_book(request):
+    # Проверяем, что это AJAX-запрос (важно для безопасности и логики)
+    is_ajax_request = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    if not is_ajax_request:
+        # Если это не AJAX, возвращаем ошибку или делаем редирект
+        return HttpResponseBadRequest("Invalid request type (not AJAX)")
+
+    # Получаем ID книги из POST-данных
+    book_id = request.POST.get('book_id')
+    if not book_id:
+        return JsonResponse({'status': 'error', 'message': 'Book ID not provided'}, status=400)
+
+    try:
+        book = get_object_or_404(Book, pk=book_id)
+        # Получаем профиль текущего пользователя
+        # Убедимся, что профиль точно существует (должен создаваться при регистрации)
+        profile = request.user.profile 
+    except Book.DoesNotExist:
+         return JsonResponse({'status': 'error', 'message': 'Book not found'}, status=404)
+    except AttributeError: 
+         # Если у user нет атрибута 'profile' (крайне маловероятно при правильной настройке)
+         return JsonResponse({'status': 'error', 'message': 'User profile not found'}, status=500)
+         
+    # Проверяем, лайкнул ли уже пользователь эту книгу
+    if profile.liked_books.filter(id=book.id).exists():
+        # Книга уже в лайках - удаляем ее
+        profile.liked_books.remove(book)
+        liked = False
+        action = 'unliked'
+    else:
+        # Книги нет в лайках - добавляем ее
+        profile.liked_books.add(book)
+        liked = True
+        action = 'liked'
+
+    # Возвращаем JSON-ответ, указывающий новое состояние
+    return JsonResponse({
+        'status': 'ok', 
+        'liked': liked, # True, если книга теперь лайкнута, False - если нет
+        'action': action # 'liked' или 'unliked' - действие, которое было выполнено
+    })
