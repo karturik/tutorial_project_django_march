@@ -7,4 +7,6 @@ urlpatterns = [
     re_path(r'^edit/$', views.edit, name='edit'),
     path('validate_username/', views.validate_username, name='validate_username'),
     path('contact/', views.contact_form_view, name='contact_form'),
+    path('book/toggle_like/', views.toggle_like_book, name='toggle_like_book'),
+
 ]

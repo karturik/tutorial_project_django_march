@@ -72,6 +72,15 @@ class BookDetailView(LoginRequiredMixin, generic.DetailView):
     model = Book
     template_name = 'books/book_page.html'
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.request.user.is_authenticated:
+            # Добавляем профиль пользователя в контекст
+            context['user_profile'] = self.request.user.profile 
+            # Оптимизация: Проверяем лайк здесь, чтобы избежать запроса в цикле шаблона
+            context['is_liked'] = context['user_profile'].liked_books.filter(id=self.object.id).exists()
+        return context
+    
     def get(self, request, *args, **kwargs):
         # Получаем книгу
         book = self.get_object()
