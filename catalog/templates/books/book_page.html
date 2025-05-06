@@ -9,26 +9,130 @@
 <p><strong>Language:</strong> {{ book.language }}</p>
 <p><strong>Genre:</strong> {% for genre in book.genre.all %} {{ genre }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
 
+{% if user.is_authenticated %} {# Показываем кнопку только авторизованным #}
+{% csrf_token %} {# Добавляем токен ПЕРЕД кнопкой, чтобы JS мог его найти #}
+
+<!-- {# Проверяем, лайкнул ли пользователь книгу.
+Нужно убедиться, что request.user.profile доступен в шаблоне.
+Возможно, потребуется передать его в контексте из BookDetailView
+или использовать собственный тег/фильтр для проверки лайка.
+Простой вариант (может быть неоптимальным при большом кол-ве лайков): #} -->
+<button id="like-button" class="btn {% if is_liked %}btn-danger{% else %}btn-primary{% endif %}"
+    data-book-id="{{ book.id }}" data-url="{% url 'toggle_like_book' %}" {# Передаем URL в data-атрибут #} type="button"
+    {# Важно: type="button" , чтобы не отправлять форму #}>
+    {% if is_liked %}Unlike{% else %}Like{% endif %}
+</button>
+{# Место для отображения количества лайков (опционально) #}
+<span id="like-count">{{ book.liked_by_users.count }}</span> Likes
+
+{# Сообщение об ошибке лайка #}
+<div id="like-error-message" style="color: red; margin-top: 5px;"></div>
+
+{% else %}
+<p><a href="{% url 'login' %}?next={{ request.path }}">Log in</a> to like this book.</p>
+{% endif %}
+
 <div style="margin-left:20px; margin-top:20px">
     <h4>Copies</h4>
 
     {% for copy in book.bookinstance_set.all %}
-        <hr>
-        <p
-            class="{% if copy.status == 'a' %}text-success{% elif copy.status == 'd' %}text-danger{% else %}text-warning{% endif %}">
-            {{ copy.get_status_display }}</p>
-        {% if copy.status != 'a' %}<p><strong>Due to be returned:</strong> {{copy.due_back}}</p>{% endif %}
-            <p><strong>Imprint:</strong> {{copy.imprint}}</p>
-            <p class="text-muted"><strong>Id:</strong> {{copy.id}}</p>
-        {% if perms.catalog.can_mark_returned %}-
-            <a href="{% url 'renew-book-librarian' copy.id %}">Renew</a>
-        {% endif %}
+    <hr>
+    <p
+        class="{% if copy.status == 'a' %}text-success{% elif copy.status == 'd' %}text-danger{% else %}text-warning{% endif %}">
+        {{ copy.get_status_display }}</p>
+    {% if copy.status != 'a' %}<p><strong>Due to be returned:</strong> {{copy.due_back}}</p>{% endif %}
+    <p><strong>Imprint:</strong> {{copy.imprint}}</p>
+    <p class="text-muted"><strong>Id:</strong> {{copy.id}}</p>
+    {% if perms.catalog.can_mark_returned %}-
+    <a href="{% url 'renew-book-librarian' copy.id %}">Renew</a>
+    {% endif %}
     {% endfor %}
 </div>
 
 <p>
     You have visited this page {{ num_visits }}{% if num_visits == 1 %} time{% else %} times{% endif %}.
 </p>
-
-
 {% endblock %}
+
+{% block javascript %}
+{{ block.super }} {# Если есть скрипты в базовом шаблоне #}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const likeButton = document.getElementById('like-button');
+        const likeCountSpan = document.getElementById('like-count');
+        const likeErrorMessage = document.getElementById('like-error-message');
+
+        if (likeButton) {
+            likeButton.addEventListener('click', function () {
+                const bookId = this.dataset.bookId; // Получаем ID книги из data-атрибута
+                const url = this.dataset.url;       // Получаем URL из data-атрибута
+                // Находим CSRF токен (предполагаем, что он прямо перед кнопкой)
+                const csrfToken = this.previousElementSibling.value;
+
+                // Очищаем предыдущую ошибку
+                if (likeErrorMessage) likeErrorMessage.textContent = '';
+                // Блокируем кнопку на время запроса (хорошая практика)
+                this.disabled = true;
+                const originalText = this.textContent;
+                this.textContent = 'Processing...';
+
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken, // Передаем CSRF-токен в заголовке
+                        // Важно: Используем 'application/x-www-form-urlencoded' 
+                        // так как отправляем простые key-value данные, а не FormData или JSON
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    // Формируем тело запроса как строку 'key1=value1&key2=value2'
+                    body: `book_id=${encodeURIComponent(bookId)}`
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            // Если ответ не ОК, пытаемся получить JSON с ошибкой или генерируем свою
+                            return response.json().then(data => Promise.reject({ status: response.status, body: data }))
+                                .catch(e => Promise.reject({ status: response.status, body: null, message: `HTTP error ${response.status}` }));
+                        }
+                        return response.json(); // Парсим успешный JSON-ответ
+                    })
+                    .then(data => {
+                        // --- Обработка успешного ответа ---
+                        if (data.status === 'ok') {
+                            // Обновляем текст и класс кнопки
+                            this.textContent = data.liked ? 'Unlike' : 'Like';
+                            this.classList.toggle('btn-primary', !data.liked); // Добавить/удалить btn-primary
+                            this.classList.toggle('btn-danger', data.liked);  // Добавить/удалить btn-danger
+
+                            // Обновляем счетчик лайков (если нужно)
+                            if (likeCountSpan) {
+                                // Проще всего перезагрузить страницу или сделать еще один AJAX запрос 
+                                // для получения точного количества, но для примера просто инкрементируем/декрементируем
+                                let currentCount = parseInt(likeCountSpan.textContent);
+                                likeCountSpan.textContent = data.liked ? currentCount + 1 : currentCount - 1;
+                            }
+                        } else {
+                            // Если сервер вернул status: 'error' в JSON ответе (хотя статус HTTP был 200 OK)
+                            throw new Error(data.message || 'Unknown error from server');
+                        }
+                    })
+                    .catch(errorInfo => {
+                        // --- Обработка ошибок (сеть, статус не-ОК, ошибка парсинга, ошибка из data.status) ---
+                        console.error('Like button error:', errorInfo);
+                        if (likeErrorMessage) {
+                            likeErrorMessage.textContent = errorInfo.message || errorInfo?.body?.message || 'Failed to update like status. Please try again.';
+                        }
+                        // Возвращаем кнопке исходный текст в случае ошибки
+                        this.textContent = originalText;
+                    })
+                    .finally(() => {
+                        // --- Выполняется всегда: и после успеха, и после ошибки ---
+                        // Разблокируем кнопку
+                        this.disabled = false;
+                    });
+            });
+        }
+    });
+</script>
+{% endblock javascript %}

@@ -2,7 +2,18 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 
-from .models import Profile
+from .models import Profile, ContactMessage
+
+
+class ContactForm(forms.ModelForm):
+    class Meta:
+        model = ContactMessage
+        # Указываем поля, которые должны быть в форме
+        fields = ['name', 'email', 'message'] 
+        # Можно добавить виджеты для настройки полей ввода, если нужно
+        widgets = {
+            'message': forms.Textarea(attrs={'rows': 4}), 
+        }
 
 # Create your forms here.
 class NewUserForm(UserCreationForm):
