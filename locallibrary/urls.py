@@ -25,6 +25,12 @@ urlpatterns = [
 
     # auth
     path('accounts/', include('users_and_accounts.urls')),
+
+    # --- Добавляем URL для логина/логаута в DRF Browsable API ---
+    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+
+    path('api/', include('api.urls', namespace='api')), # Добавляем эту строку
+
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
