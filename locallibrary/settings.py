@@ -49,7 +49,9 @@ INSTALLED_APPS = [
 
     # 3-Party apps
     'rest_framework',
+    'rest_framework.authtoken',
     'django_filters',
+    'drf_spectacular'
 ]
 
 MIDDLEWARE = [
@@ -148,20 +150,20 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 REST_FRAMEWORK = {
     # Используем аутентификацию по сессии (для Browsable API) 
     # и базовую аутентификацию (для простых клиентов).
-    # Позже мы можем добавить TokenAuthentication.
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication', 
     ],
     # По умолчанию разрешаем доступ только аутентифицированным пользователям,
     # либо разрешаем только чтение для анонимных (выберите один вариант или настройте позже)
     'DEFAULT_PERMISSION_CLASSES': [
-        # 'rest_framework.permissions.IsAuthenticated', # Строгий вариант
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly', # Более мягкий вариант
+        'rest_framework.permissions.IsAuthenticated', # Строгий вариант
+        # 'rest_framework.permissions.IsAuthenticatedOrReadOnly', # Более мягкий вариант
     ],
     # Настройки пагинации (можно настроить позже)
-    # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    # 'PAGE_SIZE': 10,
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 3,
 
     # Настройки фильтрации (если используете django-filter)
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
@@ -172,4 +174,13 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.BrowsableAPIRenderer', # Этот рендерер отвечает за веб-интерфейс
     ],
     # 'DEFAULT_PARSER_CLASSES': [...] # Парсеры для обработки входящих данных (JSON, Form data и т.д.)
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema'
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Local Library API',
+    'DESCRIPTION': 'API для управления каталогом Local Library',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False, # Не включать схему в сами интерфейсы (лучше загружать отдельно)
+    # 'SCHEMA_PATH_PREFIX': r'/api/v[0-9]', # Если у вас есть версионирование URL
 }
